@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Agent Bar</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">AB</div>
+        <div class="brand-copy">
+          <h1>Agent Bar</h1>
+          <p id="project-path" class="muted">Carregando projeto…</p>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <button id="history-button" class="button ghost" type="button">Histórico</button>
+        <button id="search-button" class="button ghost" type="button">
+          <span class="search-hint"><span class="glyph" aria-hidden="true">⌕</span>Buscar agente ou comando</span>
+          <kbd>Ctrl K</kbd>
+        </button>
+        <button id="reload-button" class="button primary" type="button">Recarregar</button>
+      </div>
+    </header>
+
+    <nav class="view-nav" aria-label="Seções do Agent Bar">
+      <button class="view-tab active" type="button" data-view="agents" aria-pressed="true">
+        Agentes
+      </button>
+      <button class="view-tab" type="button" data-view="specs" aria-pressed="false">
+        Specs <span id="nav-count-specs" class="view-count"></span>
+      </button>
+      <button class="view-tab" type="button" data-view="hooks" aria-pressed="false">
+        Hooks <span id="nav-count-hooks" class="view-count"></span>
+      </button>
+      <button class="view-tab" type="button" data-view="steering" aria-pressed="false">
+        Steering <span id="nav-count-steering" class="view-count"></span>
+      </button>
+      <span id="kiro-activity" class="view-activity" aria-live="polite"></span>
+    </nav>
+
+    <div id="warning-banner" class="warning-banner hidden" role="status"></div>
+    <div id="permission-bar" class="permission-bar hidden" role="alert"></div>
+
+    <main id="view-agents" class="content view">
+      <section class="agent-group" aria-labelledby="primary-heading">
+        <div class="group-heading">
+          <h2 id="primary-heading">Agentes</h2>
+          <span id="primary-count" class="muted"></span>
+        </div>
+        <div id="primary-bar" class="chip-bar" role="list"></div>
+      </section>
+
+      <section class="agent-group" aria-labelledby="subagent-heading">
+        <div class="group-heading">
+          <h2 id="subagent-heading">Subagentes</h2>
+          <span id="subagent-count" class="muted"></span>
+        </div>
+        <div id="subagent-bar" class="chip-bar" role="list"></div>
+      </section>
+
+      <section id="empty-state" class="empty-state hidden">
+        <div class="empty-icon" aria-hidden="true">◇</div>
+        <h2>Nenhum agente encontrado</h2>
+        <p>Crie um arquivo em <code>.opencode/agent/meu-agente.md</code> com frontmatter:</p>
+        <pre><code>---
+description: O que este agente faz
+mode: primary
+---
+
+Instruções do agente.</code></pre>
+        <p class="muted">
+          O Agent Bar também lê <code>~/.config/opencode/agent/</code> e a chave
+          <code>agent</code> de <code>opencode.json</code>. Depois clique em
+          <strong>Recarregar</strong>.
+        </p>
+      </section>
+    </main>
+
+    <!-- Specs -->
+    <main id="view-specs" class="content view hidden">
+      <header class="view-header">
+        <div>
+          <p class="kicker">Desenvolvimento guiado por spec</p>
+          <h2 class="view-title">Specs</h2>
+          <p class="muted view-lead">
+            Transforme uma ideia em <strong>requisitos</strong>, <strong>design</strong> e
+            <strong>tarefas</strong>. Um agente escreve cada fase; você revisa e aprova antes da
+            próxima. Depois, execute as tarefas uma a uma ou todas em sequência.
+          </p>
+        </div>
+        <button id="spec-new-button" class="button primary" type="button">Nova spec</button>
+      </header>
+      <div class="split">
+        <aside id="spec-list" class="split-list" aria-label="Specs"></aside>
+        <section id="spec-detail" class="split-detail" aria-live="polite"></section>
+      </div>
+    </main>
+
+    <!-- Hooks -->
+    <main id="view-hooks" class="content view hidden">
+      <header class="view-header">
+        <div>
+          <p class="kicker">Automação orientada a eventos</p>
+          <h2 class="view-title">Hooks</h2>
+          <p class="muted view-lead">
+            Quando um arquivo é salvo, criado ou apagado, quando você envia um prompt ou quando um
+            agente termina, o hook pede algo a um agente ou roda um comando.
+          </p>
+        </div>
+        <button id="hook-new-button" class="button primary" type="button">Novo hook</button>
+      </header>
+      <div class="split">
+        <aside id="hook-list" class="split-list" aria-label="Hooks"></aside>
+        <section id="hook-detail" class="split-detail"></section>
+      </div>
+    </main>
+
+    <!-- Steering -->
+    <main id="view-steering" class="content view hidden">
+      <header class="view-header">
+        <div>
+          <p class="kicker">Contexto persistente</p>
+          <h2 class="view-title">Steering</h2>
+          <p class="muted view-lead">
+            Documentos Markdown com as regras do projeto, incluídos automaticamente nos prompts:
+            sempre, quando arquivos casam com um padrão, ou quando você cita <code>#nome</code>.
+          </p>
+        </div>
+        <button id="steering-new-button" class="button primary" type="button">Novo documento</button>
+      </header>
+      <div class="split">
+        <aside id="steering-list" class="split-list" aria-label="Documentos de steering"></aside>
+        <section id="steering-detail" class="split-detail"></section>
+      </div>
+    </main>
+
+    <footer class="statusbar">
+      <span id="server-info" class="muted">Servidor: iniciando…</span>
+      <span id="cli-info" class="muted">OpenCode: verificando…</span>
+      <span id="refresh-info" class="muted"></span>
+    </footer>
+
+    <!-- Modal do agente -->
+    <div id="agent-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-backdrop" data-close-modal></div>
+      <div class="modal-card">
+        <header class="modal-header">
+          <div id="modal-icon" class="agent-icon large" aria-hidden="true"></div>
+          <div class="modal-title-copy">
+            <div class="modal-title-row">
+              <h2 id="modal-title"></h2>
+              <span id="modal-badges" class="badge-row"></span>
+            </div>
+            <p id="modal-description" class="muted"></p>
+            <p id="modal-meta" class="meta muted"></p>
+          </div>
+          <button class="icon-button" type="button" data-close-modal aria-label="Fechar">×</button>
+        </header>
+
+        <nav class="tabs" role="tablist" aria-label="Seções do agente">
+          <button class="tab active" type="button" data-tab="activity" role="tab">Atividade</button>
+          <button class="tab" type="button" data-tab="history" role="tab">Histórico</button>
+          <button class="tab" type="button" data-tab="meeting" role="tab">Reunião</button>
+        </nav>
+
+        <div class="modal-body">
+          <!-- ATIVIDADE -->
+          <section id="panel-activity" class="tab-panel">
+            <div class="activity-toolbar">
+              <div>
+                <span id="activity-status" class="status-line">ocioso</span>
+                <span id="activity-session" class="muted mono"></span>
+              </div>
+              <div class="panel-actions compact">
+                <button id="activity-new-session" class="button ghost small hidden" type="button">
+                  Nova sessão
+                </button>
+                <button id="activity-stop" class="button danger small hidden" type="button">
+                  Parar
+                </button>
+              </div>
+            </div>
+
+            <div id="resume-banner" class="resume-banner hidden"></div>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>Comandos</h3>
+                <span id="command-count" class="muted"></span>
+              </div>
+              <div id="command-list" class="command-list"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading"><h3>Prompt livre</h3></div>
+              <textarea
+                id="prompt-input"
+                class="prompt-input"
+                rows="3"
+                placeholder="Instrução direta para este agente…"
+              ></textarea>
+              <div class="panel-actions">
+                <span id="prompt-hint" class="muted"></span>
+                <button id="run-prompt-button" class="button primary" type="button">
+                  Enviar para o agente
+                </button>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>Linha do tempo ao vivo</h3>
+                <span id="activity-duration" class="muted"></span>
+              </div>
+              <div id="activity-timeline" class="timeline"></div>
+              <div id="activity-empty" class="command-empty">
+                Nenhuma atividade ainda. Envie um prompt ou execute um comando.
+              </div>
+            </section>
+          </section>
+
+          <!-- HISTÓRICO -->
+          <section id="panel-history" class="tab-panel hidden">
+            <div class="panel">
+              <div class="panel-heading">
+                <h3>Sessões deste agente</h3>
+                <button id="history-refresh" class="button ghost small" type="button">Atualizar</button>
+              </div>
+              <div id="history-list" class="history-list"></div>
+            </div>
+
+            <div id="history-replay" class="panel hidden">
+              <div class="panel-heading">
+                <h3 id="replay-title">Reprodução</h3>
+                <div class="panel-actions compact">
+                  <button id="replay-resume" class="button ghost small" type="button">Retomar sessão</button>
+                  <button id="replay-export" class="button ghost small" type="button">Exportar MD</button>
+                  <button id="replay-copy" class="button ghost small" type="button">Copiar</button>
+                  <button id="replay-delete" class="button danger small" type="button">Apagar</button>
+                </div>
+              </div>
+              <div id="replay-timeline" class="timeline"></div>
+            </div>
+          </section>
+
+          <!-- REUNIÃO -->
+          <section id="panel-meeting" class="tab-panel hidden">
+            <div id="meeting-setup" class="meeting-setup">
+              <section class="panel">
+                <div class="panel-heading">
+                  <h3>Montar reunião</h3>
+                  <span id="meeting-host" class="badge project"></span>
+                </div>
+
+                <label class="field">
+                  <span>Pauta / objetivo</span>
+                  <textarea id="meeting-agenda" class="prompt-input" rows="3" placeholder="O que a reunião precisa decidir ou produzir?"></textarea>
+                </label>
+
+                <div class="field-row">
+                  <label class="field">
+                    <span>Projeto</span>
+                    <select id="meeting-project"></select>
+                  </label>
+                  <label class="field">
+                    <span>Modo</span>
+                    <select id="meeting-mode">
+                      <option value="roundtable">Mesa-redonda</option>
+                      <option value="delegation">Delegação pelo anfitrião</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Ordem</span>
+                    <select id="meeting-order">
+                      <option value="fixed">Fixa</option>
+                      <option value="host">Anfitrião decide</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div class="field-row">
+                  <label class="field">
+                    <span>Máximo de rodadas</span>
+                    <input id="meeting-rounds" type="number" min="1" max="20" value="3" />
+                  </label>
+                  <label class="field">
+                    <span>Critério de parada</span>
+                    <select id="meeting-stop">
+                      <option value="host">Anfitrião declara concluído</option>
+                      <option value="limit">Limite de rodadas</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Salvar como modelo</span>
+                    <div class="inline">
+                      <input id="meeting-template-name" type="text" placeholder="Nome do modelo" />
+                      <button id="meeting-template-save" class="button ghost small" type="button">Salvar</button>
+                    </div>
+                  </label>
+                </div>
+
+                <div class="field">
+                  <span>Participantes</span>
+                  <div id="meeting-participants" class="chip-list"></div>
+                  <input id="meeting-participant-search" type="search" placeholder="Buscar agente para adicionar…" />
+                  <div id="meeting-participant-options" class="participant-options"></div>
+                </div>
+
+                <div class="field-row">
+                  <label class="field">
+                    <span>Modelos salvos</span>
+                    <div class="inline">
+                      <select id="meeting-template-select"><option value="">—</option></select>
+                      <button id="meeting-template-load" class="button ghost small" type="button">Carregar</button>
+                      <button id="meeting-template-delete" class="button danger small" type="button">Apagar</button>
+                    </div>
+                  </label>
+                </div>
+
+                <div id="meeting-warning" class="meeting-warning hidden"></div>
+                <div class="panel-actions">
+                  <span class="muted">O anfitrião é o agente dono deste painel.</span>
+                  <button id="meeting-start" class="button primary" type="button">Iniciar reunião</button>
+                </div>
+              </section>
+            </div>
+
+            <div id="meeting-live" class="meeting-live hidden">
+              <section class="panel">
+                <div class="panel-heading">
+                  <h3>Reunião em andamento</h3>
+                  <span id="meeting-status" class="status-line"></span>
+                  <button id="meeting-new" class="button ghost small hidden" type="button">
+                    Nova reunião
+                  </button>
+                </div>
+                <div class="meeting-controls">
+                  <button id="meeting-pause" class="button ghost small" type="button">Pausar</button>
+                  <button id="meeting-resume" class="button ghost small hidden" type="button">Retomar</button>
+                  <button id="meeting-skip" class="button ghost small" type="button">Pular vez</button>
+                  <button id="meeting-stop-button" class="button danger small" type="button">Encerrar</button>
+                </div>
+                <div id="meeting-participants-live" class="chip-list"></div>
+                <div class="inline">
+                  <select id="meeting-live-add"></select>
+                  <button id="meeting-live-add-button" class="button ghost small" type="button">
+                    Adicionar participante
+                  </button>
+                </div>
+                <div id="meeting-current" class="muted"></div>
+                <div id="meeting-warnings" class="meeting-warning hidden"></div>
+              </section>
+
+              <section class="panel">
+                <div class="panel-heading"><h3>Transcrição</h3></div>
+                <div id="meeting-chat" class="meeting-chat"></div>
+                <div class="inline">
+                  <input id="meeting-moderator" type="text" placeholder="Mensagem do moderador…" />
+                  <button id="meeting-moderator-send" class="button primary small" type="button">Intervir</button>
+                </div>
+              </section>
+
+              <section class="panel">
+                <div class="panel-heading"><h3>Arquivos e ata</h3></div>
+                <div id="meeting-files" class="file-list"></div>
+                <div id="meeting-ata" class="muted"></div>
+              </section>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <!-- Histórico geral -->
+    <div id="general-history-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="gh-title">
+      <div class="modal-backdrop" data-close-general-history></div>
+      <div class="modal-card wide">
+        <header class="modal-header">
+          <div class="agent-icon large">≡</div>
+          <div class="modal-title-copy">
+            <h2 id="gh-title">Histórico geral</h2>
+            <p class="muted">Linha do tempo unificada de todos os agentes.</p>
+          </div>
+          <button class="icon-button" type="button" data-close-general-history aria-label="Fechar">×</button>
+        </header>
+        <div class="modal-body">
+          <section class="panel">
+            <div class="field-row">
+              <label class="field"><span>Agente</span><select id="gh-agent"><option value="">Todos</option></select></label>
+              <label class="field"><span>Projeto</span><select id="gh-project"><option value="">Todos</option></select></label>
+              <label class="field"><span>Status</span><select id="gh-status"><option value="">Todos</option><option value="running">Rodando</option><option value="succeeded">Concluído</option><option value="failed">Erro</option><option value="interrupted">Interrompido</option></select></label>
+              <label class="field"><span>Período</span><select id="gh-period"><option value="all">Tudo</option><option value="1">24 horas</option><option value="7">7 dias</option><option value="30">30 dias</option><option value="90">90 dias</option></select></label>
+            </div>
+            <div class="inline">
+              <input id="gh-search" type="search" placeholder="Buscar por agente, projeto, resumo ou arquivo…" />
+              <button id="gh-timeline-button" class="button ghost small" type="button">
+                Linha do tempo unificada
+              </button>
+            </div>
+          </section>
+          <section class="panel">
+            <div id="gh-list" class="history-list"></div>
+          </section>
+          <section id="gh-replay" class="panel hidden">
+            <div class="panel-heading"><h3 id="gh-replay-title">Reprodução</h3></div>
+            <div id="gh-timeline" class="timeline"></div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <!-- Busca rápida -->
+    <div id="search-overlay" class="search-overlay hidden" role="dialog" aria-modal="true" aria-label="Busca rápida">
+      <div class="search-backdrop" data-close-search></div>
+      <div class="search-card">
+        <div class="search-input-row">
+          <span class="search-symbol" aria-hidden="true">⌕</span>
+          <input id="search-input" type="search" autocomplete="off" placeholder="Buscar agente ou comando…" aria-label="Buscar agente ou comando" />
+          <kbd>Esc</kbd>
+        </div>
+        <div id="search-results" class="search-results"></div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast hidden" role="status"></div>
+
+    <script src="app.js"></script>
+    <script src="kiro.js"></script>
+  </body>
+</html>

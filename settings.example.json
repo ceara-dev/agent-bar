@@ -1,0 +1,26 @@
+{
+  "history": {
+    "retentionDays": 90,
+    "maxSessionBytes": 5242880
+  },
+  "meeting": {
+    "maxAgents": 4,
+    "maxRounds": 3,
+    "turnTimeoutMs": 600000
+  },
+  "server": {
+    "startupTimeoutMs": 20000,
+    "restartAttempts": 3
+  },
+  "steering": {
+    "enabled": true,
+    "maxChars": 60000
+  },
+  "hooks": {
+    "enabled": true,
+    "debounceMs": 1500,
+    "maxRunsPerMinute": 12,
+    "commandTimeoutMs": 120000,
+    "maxWatchedDirs": 5000
+  }
+}

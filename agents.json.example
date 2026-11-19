@@ -1,0 +1,10 @@
+{
+  "atlas": {
+    "icon": "🧭",
+    "color": "#14B8A6",
+    "order": 1
+  },
+  "cajueiro": {
+    "hidden": true
+  }
+}
